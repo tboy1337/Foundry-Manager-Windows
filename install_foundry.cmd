@@ -26,19 +26,31 @@ echo + Foundry Installer/Updater +
 echo +===========================+
 echo.
 
-REM Detect latest Foundry version
+REM Detect latest Foundry version and download URL
+set FOUNDRY_URL=
 set FOUNDRY_VERSION=
-for /f "delims=" %%i in ('curl -Ls -o nul -w "%%{url_effective}" https://github.com/foundry-rs/foundry/releases/latest 2^>nul') do set FOUNDRY_LATEST_URL=%%i
-if %errorlevel% neq 0 (
+
+REM Get the Windows download URL directly from GitHub API using PowerShell for JSON parsing
+for /f "delims=" %%i in ('powershell -NoProfile -Command "$release = Invoke-RestMethod -Uri 'https://api.github.com/repos/foundry-rs/foundry/releases/latest'; $asset = $release.assets | Where-Object { $_.name -like '*win32_amd64.zip' }; if ($asset) { $asset.browser_download_url } else { 'NOT_FOUND' }" 2^>nul') do set FOUNDRY_URL=%%i
+
+if "%FOUNDRY_URL%"=="NOT_FOUND" (
+    echo ERROR: Failed to find Windows download URL from GitHub API.
+    echo.
+    echo Please check your internet connection and try again.
+    goto :error_exit
+)
+
+if "%FOUNDRY_URL%"=="" (
     echo ERROR: Failed to detect latest Foundry version.
     echo.
     echo Please check your internet connection and try again.
     goto :error_exit
 )
 
-for %%a in ("!FOUNDRY_LATEST_URL!") do set FOUNDRY_VERSION=%%~nxa
+REM Extract version from the download URL (e.g., v1.5.1 from the URL)
+for /f "tokens=7 delims=/" %%v in ("%FOUNDRY_URL%") do set FOUNDRY_VERSION=%%v
 if "!FOUNDRY_VERSION!"=="" (
-    echo ERROR: Failed to parse Foundry version from URL: !FOUNDRY_LATEST_URL!
+    echo ERROR: Failed to parse Foundry version from download URL: !FOUNDRY_URL!
     echo.
     echo Cannot proceed with installation.
     goto :error_exit
@@ -46,9 +58,6 @@ if "!FOUNDRY_VERSION!"=="" (
 
 echo Latest Foundry version: !FOUNDRY_VERSION!
 echo.
-
-REM Set up paths and URLs
-set FOUNDRY_URL=https://github.com/foundry-rs/foundry/releases/download/!FOUNDRY_VERSION!/foundry_!FOUNDRY_VERSION!_win32_amd64.zip
 set FOUNDRY_DIR=%LOCALAPPDATA%\Programs\Foundry
 set FOUNDRY_BIN=%FOUNDRY_DIR%\bin
 set FOUNDRY_TEMP=%TEMP%\foundry_install_%RANDOM%_%RANDOM%
