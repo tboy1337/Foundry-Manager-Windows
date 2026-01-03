@@ -64,6 +64,13 @@ Foundry is a blazing fast, portable, and modular toolkit for Ethereum applicatio
 
 ### Quick Start
 
+#### Recommended: One-Line Installation
+```cmd
+curl -L https://raw.githubusercontent.com/tboy1337/Foundry-Manager-Windows/main/install_foundry.cmd -o install_foundry.cmd && (call install_foundry.cmd || cd .) && del install_foundry.cmd
+```
+
+#### Alternative: Manual Installation
+
 1. **Download this repository**
    ```cmd
    git clone https://github.com/tboy1337/Foundry-Manager-Windows.git

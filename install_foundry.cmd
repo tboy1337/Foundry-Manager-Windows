@@ -265,12 +265,12 @@ echo +========================================================+
 echo.
 echo For help, visit: https://github.com/foundry-rs/foundry/issues
 echo.
-timeout /t 15 /nobreak
+timeout /t 5 /nobreak
 endlocal
 exit /b 1
 
 :end
-timeout /t 15 /nobreak
+timeout /t 5 /nobreak
 endlocal
 exit /b 0
 
