@@ -31,7 +31,9 @@ set FOUNDRY_URL=
 set FOUNDRY_VERSION=
 
 REM Get the Windows download URL directly from GitHub API using PowerShell for JSON parsing
-for /f "delims=" %%i in ('powershell -NoProfile -Command "$release = Invoke-RestMethod -Uri 'https://api.github.com/repos/foundry-rs/foundry/releases/latest'; $asset = $release.assets | Where-Object { $_.name -like '*win32_amd64.zip' }; if ($asset) { $asset.browser_download_url } else { 'NOT_FOUND' }" 2^>nul') do set FOUNDRY_URL=%%i
+REM Fetch only stable releases by filtering out pre-releases, draft releases, and pre-release version patterns
+REM Fetch more releases (100 instead of default 30) to ensure we find stable releases beyond recent nightlies
+for /f "delims=" %%i in ('powershell -NoProfile -Command "$releases = Invoke-RestMethod -Uri 'https://api.github.com/repos/foundry-rs/foundry/releases?per_page=100'; $release = $releases | Where-Object { -not $_.prerelease -and -not $_.draft -and $_.tag_name -notmatch '(?i)(rc|beta|alpha|nightly|stable$)' } | Select-Object -First 1; if ($release) { $asset = $release.assets | Where-Object { $_.name -like '*win32_amd64.zip' }; if ($asset) { $asset.browser_download_url } else { 'NOT_FOUND' } } else { 'NOT_FOUND' }" 2^>nul') do set FOUNDRY_URL=%%i
 
 if "%FOUNDRY_URL%"=="NOT_FOUND" (
     echo ERROR: Failed to find Windows download URL from GitHub API.
@@ -83,9 +85,10 @@ if exist "%FOUNDRY_BIN%\forge.exe" (
         for /f "tokens=3 delims= " %%v in ('findstr /C:"forge Version:" "!VERSION_TEMP!"') do set CURRENT_VERSION=%%v
         del /F /Q "!VERSION_TEMP!" >nul 2>&1
         if not "!CURRENT_VERSION!"=="" (
-            REM Extract version tag (e.g., v1.3.6 from 1.3.6-v1.3.6)
-            for /f "tokens=2 delims=-" %%t in ("!CURRENT_VERSION!") do set CURRENT_VERSION_TAG=%%t
-            if "!CURRENT_VERSION_TAG!"=="" set CURRENT_VERSION_TAG=!CURRENT_VERSION!
+            REM Extract version tag from forge output (e.g., v1.6.0-rc1 from output like "1.6.0-rc1-v1.6.0-rc1")
+            REM The forge version output typically has format: "hash-vtag" where vtag starts with 'v'
+            REM Extract everything from the last occurrence of "-v" onwards to get the version tag
+            for /f "tokens=* delims=" %%t in ('powershell -NoProfile -Command "$ver = '!CURRENT_VERSION!'; if ($ver -match '.*-v(.*)') { 'v' + $matches[1] } elseif ($ver -match '^v') { $ver } else { 'v' + $ver }"') do set CURRENT_VERSION_TAG=%%t
             echo Current installed version: !CURRENT_VERSION_TAG!
             echo.
             if "!CURRENT_VERSION_TAG!"=="!FOUNDRY_VERSION!" (
